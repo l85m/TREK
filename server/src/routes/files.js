@@ -35,6 +35,11 @@ const upload = multer({
       'text/plain',
       'text/csv',
     ];
+    const ext = path.extname(file.originalname).toLowerCase();
+    const blockedExts = ['.svg', '.html', '.htm', '.xml'];
+    if (blockedExts.includes(ext) || file.mimetype.includes('svg')) {
+      return cb(new Error('File type not allowed'));
+    }
     if (allowed.includes(file.mimetype) || file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { backupApi } from '../../api/client'
 import { useToast } from '../shared/Toast'
-import { Download, Trash2, Plus, RefreshCw, RotateCcw, Upload, Clock, Check, HardDrive } from 'lucide-react'
+import { Download, Trash2, Plus, RefreshCw, RotateCcw, Upload, Clock, Check, HardDrive, AlertTriangle } from 'lucide-react'
 import { useTranslation } from '../../i18n'
 
 const INTERVAL_OPTIONS = [
@@ -29,9 +29,10 @@ export default function BackupPanel() {
   const [autoSettings, setAutoSettings] = useState({ enabled: false, interval: 'daily', keep_days: 7 })
   const [autoSettingsSaving, setAutoSettingsSaving] = useState(false)
   const [autoSettingsDirty, setAutoSettingsDirty] = useState(false)
+  const [restoreConfirm, setRestoreConfirm] = useState(null) // { type: 'file'|'upload', filename, file? }
   const fileInputRef = useRef(null)
   const toast = useToast()
-  const { t, locale } = useTranslation()
+  const { t, language, locale } = useTranslation()
 
   const loadBackups = async () => {
     setIsLoading(true)
@@ -67,32 +68,42 @@ export default function BackupPanel() {
     }
   }
 
-  const handleRestore = async (filename) => {
-    if (!confirm(t('backup.confirm.restore', { name: filename }))) return
-    setRestoringFile(filename)
-    try {
-      await backupApi.restore(filename)
-      toast.success(t('backup.toast.restored'))
-      setTimeout(() => window.location.reload(), 1500)
-    } catch (err) {
-      toast.error(err.response?.data?.error || t('backup.toast.restoreError'))
-      setRestoringFile(null)
-    }
+  const handleRestore = (filename) => {
+    setRestoreConfirm({ type: 'file', filename })
   }
 
-  const handleUploadRestore = async (e) => {
+  const handleUploadRestore = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
-    if (!confirm(t('backup.confirm.uploadRestore', { name: file.name }))) return
-    setIsUploading(true)
-    try {
-      await backupApi.uploadRestore(file)
-      toast.success(t('backup.toast.restored'))
-      setTimeout(() => window.location.reload(), 1500)
-    } catch (err) {
-      toast.error(err.response?.data?.error || t('backup.toast.uploadError'))
-      setIsUploading(false)
+    setRestoreConfirm({ type: 'upload', filename: file.name, file })
+  }
+
+  const executeRestore = async () => {
+    if (!restoreConfirm) return
+    const { type, filename, file } = restoreConfirm
+    setRestoreConfirm(null)
+
+    if (type === 'file') {
+      setRestoringFile(filename)
+      try {
+        await backupApi.restore(filename)
+        toast.success(t('backup.toast.restored'))
+        setTimeout(() => window.location.reload(), 1500)
+      } catch (err) {
+        toast.error(err.response?.data?.error || t('backup.toast.restoreError'))
+        setRestoringFile(null)
+      }
+    } else {
+      setIsUploading(true)
+      try {
+        await backupApi.uploadRestore(file)
+        toast.success(t('backup.toast.restored'))
+        setTimeout(() => window.location.reload(), 1500)
+      } catch (err) {
+        toast.error(err.response?.data?.error || t('backup.toast.uploadError'))
+        setIsUploading(false)
+      }
     }
   }
 
@@ -357,6 +368,71 @@ export default function BackupPanel() {
           </div>
         </div>
       </div>
+
+      {/* Restore Warning Modal */}
+      {restoreConfirm && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => setRestoreConfirm(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 440, borderRadius: 16, overflow: 'hidden' }}
+            className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+          >
+            {/* Red header */}
+            <div style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <AlertTriangle size={20} style={{ color: 'white' }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'white' }}>
+                  {language === 'de' ? 'Backup wiederherstellen?' : 'Restore Backup?'}
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>
+                  {restoreConfirm.filename}
+                </p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '20px 24px' }}>
+              <p className="text-gray-700 dark:text-gray-300" style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+                {language === 'de'
+                  ? 'Alle aktuellen Daten (Reisen, Orte, Benutzer, Uploads) werden unwiderruflich durch das Backup ersetzt. Dieser Vorgang kann nicht rückgängig gemacht werden.'
+                  : 'All current data (trips, places, users, uploads) will be permanently replaced by the backup. This action cannot be undone.'}
+              </p>
+
+              <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, fontSize: 12, lineHeight: 1.5 }}
+                className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
+              >
+                {language === 'de'
+                  ? 'Tipp: Erstelle zuerst ein Backup des aktuellen Stands, bevor du wiederherstellst.'
+                  : 'Tip: Create a backup of the current state before restoring.'}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '0 24px 20px', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setRestoreConfirm(null)}
+                className="text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                style={{ padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                {language === 'de' ? 'Abbrechen' : 'Cancel'}
+              </button>
+              <button
+                onClick={executeRestore}
+                style={{ padding: '9px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: '#dc2626', color: 'white' }}
+                onMouseEnter={e => e.currentTarget.style.background = '#b91c1c'}
+                onMouseLeave={e => e.currentTarget.style.background = '#dc2626'}
+              >
+                {language === 'de' ? 'Ja, wiederherstellen' : 'Yes, restore'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -29,10 +29,8 @@ function handleMessage(event) {
     // Store our socket ID from welcome message
     if (parsed.type === 'welcome') {
       mySocketId = parsed.socketId
-      console.log('[WS] Got socketId:', mySocketId)
       return
     }
-    console.log('[WS] Received:', parsed.type, parsed)
     listeners.forEach(fn => {
       try { fn(parsed) } catch (err) { console.error('WebSocket listener error:', err) }
     })
@@ -61,14 +59,14 @@ function connectInternal(token, isReconnect = false) {
   socket = new WebSocket(url)
 
   socket.onopen = () => {
-    console.log('[WS] Connected', isReconnect ? '(reconnect)' : '(initial)')
+    // connection established
     reconnectDelay = 1000
     // Join active trips on any connect (initial or reconnect)
     if (activeTrips.size > 0) {
       activeTrips.forEach(tripId => {
         if (socket && socket.readyState === WebSocket.OPEN) {
           socket.send(JSON.stringify({ type: 'join', tripId }))
-          console.log('[WS] Joined trip', tripId)
+          // joined trip room
         }
       })
       // Refetch trip data for active trips

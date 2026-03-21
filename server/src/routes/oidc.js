@@ -196,7 +196,7 @@ router.get('/callback', async (req, res) => {
     // Generate JWT and redirect to frontend
     const token = generateToken(user);
     // In dev mode, frontend runs on a different port
-    res.redirect(frontendUrl(`/login?token=${token}`));
+    res.redirect(frontendUrl(`/login#token=${token}`));
   } catch (err) {
     console.error('[OIDC] Callback error:', err);
     res.redirect(frontendUrl('/login?oidc_error=server_error'));

@@ -24,8 +24,13 @@ const uploadCover = multer({
   storage: coverStorage,
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Nur Bilder erlaubt'));
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    if (file.mimetype.startsWith('image/') && !file.mimetype.includes('svg') && allowedExts.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only jpg, png, gif, webp images allowed'));
+    }
   },
 });
 

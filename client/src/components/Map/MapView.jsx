@@ -19,6 +19,11 @@ L.Icon.Default.mergeOptions({
  * Create a round photo-circle marker.
  * Shows image_url if available, otherwise category icon in colored circle.
  */
+function escAttr(s) {
+  if (!s) return ''
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
 function createPlaceIcon(place, orderNumber, isSelected) {
   const size = isSelected ? 44 : 36
   const borderColor = isSelected ? '#111827' : 'white'
@@ -55,7 +60,7 @@ function createPlaceIcon(place, orderNumber, isSelected) {
         cursor:pointer;flex-shrink:0;position:relative;
       ">
         <div style="width:100%;height:100%;border-radius:50%;overflow:hidden;">
-          <img src="${place.image_url}" style="width:100%;height:100%;object-fit:cover;" />
+          <img src="${escAttr(place.image_url)}" style="width:100%;height:100%;object-fit:cover;" />
         </div>
         ${badgeHtml}
       </div>`,

@@ -138,24 +138,36 @@ async function restoreFromZip(zipPath, res) {
     // Step 1: close DB connection BEFORE touching the file (required on Windows)
     closeDb();
 
-    // Step 2: remove WAL/SHM and overwrite DB file
-    const dbDest = path.join(dataDir, 'travel.db');
-    for (const ext of ['', '-wal', '-shm']) {
-      try { fs.unlinkSync(dbDest + ext); } catch (e) {}
-    }
-    fs.copyFileSync(extractedDb, dbDest);
+    try {
+      // Step 2: remove WAL/SHM and overwrite DB file
+      const dbDest = path.join(dataDir, 'travel.db');
+      for (const ext of ['', '-wal', '-shm']) {
+        try { fs.unlinkSync(dbDest + ext); } catch (e) {}
+      }
+      fs.copyFileSync(extractedDb, dbDest);
 
-    // Step 3: restore uploads
-    const extractedUploads = path.join(extractDir, 'uploads');
-    if (fs.existsSync(extractedUploads)) {
-      if (fs.existsSync(uploadsDir)) fs.rmSync(uploadsDir, { recursive: true, force: true });
-      fs.cpSync(extractedUploads, uploadsDir, { recursive: true });
+      // Step 3: restore uploads — overwrite in-place instead of rmSync
+      // (rmSync fails with EBUSY because express.static holds the directory)
+      const extractedUploads = path.join(extractDir, 'uploads');
+      if (fs.existsSync(extractedUploads)) {
+        // Clear contents of each subdirectory without removing the root uploads dir
+        for (const sub of fs.readdirSync(uploadsDir)) {
+          const subPath = path.join(uploadsDir, sub);
+          if (fs.statSync(subPath).isDirectory()) {
+            for (const file of fs.readdirSync(subPath)) {
+              try { fs.unlinkSync(path.join(subPath, file)); } catch (e) {}
+            }
+          }
+        }
+        // Copy restored files over
+        fs.cpSync(extractedUploads, uploadsDir, { recursive: true, force: true });
+      }
+    } finally {
+      // Step 4: ALWAYS reopen DB — even if file copy failed, so the server stays functional
+      reinitialize();
     }
 
     fs.rmSync(extractDir, { recursive: true, force: true });
-
-    // Step 4: reopen DB with restored data
-    reinitialize();
 
     res.json({ success: true });
   } catch (err) {

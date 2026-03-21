@@ -421,6 +421,7 @@ if (process.env.DEMO_MODE === 'true') {
 // without needing a server restart after reinitialize()
 const db = new Proxy({}, {
   get(_, prop) {
+    if (!_db) throw new Error('Database connection is not available (restore in progress?)');
     const val = _db[prop];
     return typeof val === 'function' ? val.bind(_db) : val;
   },

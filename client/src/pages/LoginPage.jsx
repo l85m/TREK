@@ -29,9 +29,11 @@ export default function LoginPage() {
       }
     })
 
-    // Handle OIDC callback token
+    // Handle OIDC callback token (via URL fragment to avoid logging)
+    const hash = window.location.hash.substring(1)
+    const hashParams = new URLSearchParams(hash)
+    const token = hashParams.get('token')
     const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
     const oidcError = params.get('oidc_error')
     if (token) {
       localStorage.setItem('auth_token', token)
