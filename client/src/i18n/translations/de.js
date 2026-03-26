@@ -956,6 +956,7 @@ const de = {
   'collab.chat.placeholder': 'Nachricht eingeben...',
   'collab.chat.empty': 'Starte die Unterhaltung',
   'collab.chat.emptyHint': 'Nachrichten werden mit allen Reiseteilnehmern geteilt',
+  'collab.chat.emptyDesc': 'Teile Ideen, Pläne und Updates mit deiner Reisegruppe',
   'collab.chat.today': 'Heute',
   'collab.chat.yesterday': 'Gestern',
   'collab.chat.deletedMessage': 'hat eine Nachricht gelöscht',

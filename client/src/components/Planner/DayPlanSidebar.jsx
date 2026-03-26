@@ -674,7 +674,7 @@ export default function DayPlanSidebar({
                               place.website && { label: t('inspector.website'), icon: ExternalLink, onClick: () => window.open(place.website, '_blank') },
                               (place.lat && place.lng) && { label: 'Google Maps', icon: Navigation, onClick: () => window.open(`https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`, '_blank') },
                               { divider: true },
-                              onDeletePlace && { label: t('common.delete'), icon: Trash2, danger: true, onClick: () => { if (confirm(t('trip.confirm.deletePlace'))) onDeletePlace(place.id) } },
+                              onDeletePlace && { label: t('common.delete'), icon: Trash2, danger: true, onClick: () => onDeletePlace(place.id) },
                             ])}
                             onMouseEnter={() => setHoveredId(assignment.id)}
                             onMouseLeave={() => setHoveredId(null)}

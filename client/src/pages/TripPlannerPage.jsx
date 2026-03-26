@@ -24,6 +24,7 @@ import { useTranslation } from '../i18n'
 import { joinTrip, leaveTrip, addListener, removeListener } from '../api/websocket'
 import { addonsApi, accommodationsApi, authApi, tripsApi, assignmentsApi } from '../api/client'
 import { calculateRoute } from '../components/Map/RouteCalculator'
+import ConfirmDialog from '../components/shared/ConfirmDialog'
 
 const MIN_SIDEBAR = 200
 const MAX_SIDEBAR = 520
@@ -111,6 +112,7 @@ export default function TripPlannerPage() {
   const [routeSegments, setRouteSegments] = useState([]) // { from, to, walkingText, drivingText }
   const [fitKey, setFitKey] = useState(0)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(null) // 'left' | 'right' | null
+  const [deletePlaceId, setDeletePlaceId] = useState(null)
 
   // Load trip + files (needed for place inspector file section)
   useEffect(() => {
@@ -278,14 +280,18 @@ export default function TripPlannerPage() {
     }
   }, [editingPlace, editingAssignmentId, tripId, tripStore, toast])
 
-  const handleDeletePlace = useCallback(async (placeId) => {
-    if (!confirm(t('trip.confirm.deletePlace'))) return
+  const handleDeletePlace = useCallback((placeId) => {
+    setDeletePlaceId(placeId)
+  }, [])
+
+  const confirmDeletePlace = useCallback(async () => {
+    if (!deletePlaceId) return
     try {
-      await tripStore.deletePlace(tripId, placeId)
-      if (selectedPlaceId === placeId) setSelectedPlaceId(null)
+      await tripStore.deletePlace(tripId, deletePlaceId)
+      if (selectedPlaceId === deletePlaceId) setSelectedPlaceId(null)
       toast.success(t('trip.toast.placeDeleted'))
     } catch (err) { toast.error(err.message) }
-  }, [tripId, tripStore, toast, selectedPlaceId])
+  }, [deletePlaceId, tripId, tripStore, toast, selectedPlaceId])
 
   const handleAssignToDay = useCallback(async (placeId, dayId, position) => {
     const target = dayId || selectedDayId
@@ -650,6 +656,7 @@ export default function TripPlannerPage() {
                     }))
                   } catch {}
                 }}
+                onUpdatePlace={async (placeId, data) => { try { await tripStore.updatePlace(tripId, placeId, data) } catch (err) { toast.error(err.message) } }}
               />
             )}
 
@@ -729,6 +736,13 @@ export default function TripPlannerPage() {
       <TripFormModal isOpen={showTripForm} onClose={() => setShowTripForm(false)} onSave={async (data) => { await tripStore.updateTrip(tripId, data); toast.success(t('trip.toast.tripUpdated')) }} trip={trip} />
       <TripMembersModal isOpen={showMembersModal} onClose={() => setShowMembersModal(false)} tripId={tripId} tripTitle={trip?.title} />
       <ReservationModal isOpen={showReservationModal} onClose={() => { setShowReservationModal(false); setEditingReservation(null) }} onSave={handleSaveReservation} reservation={editingReservation} days={days} places={places} assignments={assignments} selectedDayId={selectedDayId} files={files} onFileUpload={(fd) => tripStore.addFile(tripId, fd)} onFileDelete={(id) => tripStore.deleteFile(tripId, id)} />
+      <ConfirmDialog
+        isOpen={!!deletePlaceId}
+        onClose={() => setDeletePlaceId(null)}
+        onConfirm={confirmDeletePlace}
+        title={t('common.delete')}
+        message={t('trip.confirm.deletePlace')}
+      />
     </div>
   )
 }

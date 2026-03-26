@@ -46,20 +46,84 @@ const TRIP_SELECT = `
 `;
 
 function generateDays(tripId, startDate, endDate) {
-  db.prepare('DELETE FROM days WHERE trip_id = ?').run(tripId);
+  const existing = db.prepare('SELECT id, day_number, date FROM days WHERE trip_id = ?').all(tripId);
+
   if (!startDate || !endDate) {
-    const insert = db.prepare('INSERT INTO days (trip_id, day_number, date) VALUES (?, ?, NULL)');
-    for (let i = 1; i <= 7; i++) insert.run(tripId, i);
+    // No dates — keep up to 7 dateless days, reuse existing ones
+    const datelessExisting = existing.filter(d => !d.date).sort((a, b) => a.day_number - b.day_number);
+    // Remove days with dates (they no longer apply)
+    const withDates = existing.filter(d => d.date);
+    if (withDates.length > 0) {
+      db.prepare(`DELETE FROM days WHERE trip_id = ? AND date IS NOT NULL`).run(tripId);
+    }
+    // Ensure exactly 7 dateless days
+    const needed = 7 - datelessExisting.length;
+    if (needed > 0) {
+      const insert = db.prepare('INSERT INTO days (trip_id, day_number, date) VALUES (?, ?, NULL)');
+      for (let i = 0; i < needed; i++) insert.run(tripId, datelessExisting.length + i + 1);
+    } else if (needed < 0) {
+      // Too many dateless days — remove extras (highest day_number first to preserve earlier assignments)
+      const toRemove = datelessExisting.slice(7);
+      const del = db.prepare('DELETE FROM days WHERE id = ?');
+      for (const d of toRemove) del.run(d.id);
+    }
+    // Renumber — use negative temp values first to avoid UNIQUE conflicts
+    const remaining = db.prepare('SELECT id FROM days WHERE trip_id = ? ORDER BY day_number').all(tripId);
+    const tmpUpd = db.prepare('UPDATE days SET day_number = ? WHERE id = ?');
+    remaining.forEach((d, i) => tmpUpd.run(-(i + 1), d.id));
+    remaining.forEach((d, i) => tmpUpd.run(i + 1, d.id));
     return;
   }
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const numDays = Math.min(Math.floor((end - start) / 86400000) + 1, 90);
-  const insert = db.prepare('INSERT INTO days (trip_id, day_number, date) VALUES (?, ?, ?)');
+
+  // Use pure string-based date math to avoid timezone/DST issues
+  const [sy, sm, sd] = startDate.split('-').map(Number);
+  const [ey, em, ed] = endDate.split('-').map(Number);
+  const startMs = Date.UTC(sy, sm - 1, sd);
+  const endMs = Date.UTC(ey, em - 1, ed);
+  const numDays = Math.min(Math.floor((endMs - startMs) / 86400000) + 1, 90);
+
+  // Build target dates
+  const targetDates = [];
   for (let i = 0; i < numDays; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    insert.run(tripId, i + 1, d.toISOString().split('T')[0]);
+    const d = new Date(startMs + i * 86400000);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    targetDates.push(`${yyyy}-${mm}-${dd}`);
+  }
+
+  // Index existing days by date
+  const existingByDate = new Map();
+  for (const d of existing) {
+    if (d.date) existingByDate.set(d.date, d);
+  }
+
+  const targetDateSet = new Set(targetDates);
+
+  // Delete days whose date is no longer in the new range
+  const toDelete = existing.filter(d => d.date && !targetDateSet.has(d.date));
+  // Also delete dateless days (they are replaced by dated ones)
+  const datelessToDelete = existing.filter(d => !d.date);
+  const del = db.prepare('DELETE FROM days WHERE id = ?');
+  for (const d of [...toDelete, ...datelessToDelete]) del.run(d.id);
+
+  // Move all kept days to negative day_numbers to avoid UNIQUE conflicts
+  const setTemp = db.prepare('UPDATE days SET day_number = ? WHERE id = ?');
+  const kept = existing.filter(d => d.date && targetDateSet.has(d.date));
+  for (let i = 0; i < kept.length; i++) setTemp.run(-(i + 1), kept[i].id);
+
+  // Now assign correct day_numbers and insert missing days
+  const insert = db.prepare('INSERT INTO days (trip_id, day_number, date) VALUES (?, ?, ?)');
+  const update = db.prepare('UPDATE days SET day_number = ? WHERE id = ?');
+
+  for (let i = 0; i < targetDates.length; i++) {
+    const date = targetDates[i];
+    const ex = existingByDate.get(date);
+    if (ex) {
+      update.run(i + 1, ex.id);
+    } else {
+      insert.run(tripId, i + 1, date);
+    }
   }
 }
 

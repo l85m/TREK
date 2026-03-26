@@ -100,15 +100,38 @@ function formatFileSize(bytes) {
 export default function PlaceInspector({
   place, categories, days, selectedDayId, selectedAssignmentId, assignments, reservations = [],
   onClose, onEdit, onDelete, onAssignToDay, onRemoveAssignment,
-  files, onFileUpload, tripMembers = [], onSetParticipants,
+  files, onFileUpload, tripMembers = [], onSetParticipants, onUpdatePlace,
 }) {
   const { t, locale, language } = useTranslation()
   const timeFormat = useSettingsStore(s => s.settings.time_format) || '24h'
   const [hoursExpanded, setHoursExpanded] = useState(false)
   const [filesExpanded, setFilesExpanded] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState('')
+  const nameInputRef = useRef(null)
   const fileInputRef = useRef(null)
   const googleDetails = useGoogleDetails(place?.google_place_id, language)
+
+  const startNameEdit = () => {
+    if (!onUpdatePlace) return
+    setNameValue(place.name || '')
+    setEditingName(true)
+    setTimeout(() => nameInputRef.current?.focus(), 0)
+  }
+
+  const commitNameEdit = () => {
+    if (!editingName) return
+    const trimmed = nameValue.trim()
+    setEditingName(false)
+    if (!trimmed || trimmed === place.name) return
+    onUpdatePlace(place.id, { name: trimmed })
+  }
+
+  const handleNameKeyDown = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitNameEdit() }
+    if (e.key === 'Escape') setEditingName(false)
+  }
 
   if (!place) return null
 
@@ -192,7 +215,21 @@ export default function PlaceInspector({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', lineHeight: '1.3' }}>{place.name}</span>
+              {editingName ? (
+                <input
+                  ref={nameInputRef}
+                  value={nameValue}
+                  onChange={e => setNameValue(e.target.value)}
+                  onBlur={commitNameEdit}
+                  onKeyDown={handleNameKeyDown}
+                  style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', lineHeight: '1.3', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 6, padding: '1px 6px', fontFamily: 'inherit', outline: 'none', width: '100%' }}
+                />
+              ) : (
+                <span
+                  onDoubleClick={startNameEdit}
+                  style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', lineHeight: '1.3', cursor: onUpdatePlace ? 'text' : 'default' }}
+                >{place.name}</span>
+              )}
               {category && (() => {
                 const CatIcon = getCategoryIcon(category.icon)
                 return (
