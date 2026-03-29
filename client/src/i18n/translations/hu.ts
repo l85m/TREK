@@ -1,4 +1,4 @@
-const hu: Record<string, string> = {
+const hu: Record<string, string | { name: string; category: string }[]> = {
   // Általános
   'common.save': 'Mentés',
   'common.cancel': 'Mégse',
@@ -90,9 +90,6 @@ const hu: Record<string, string> = {
   'dashboard.toast.archiveError': 'Nem sikerült archiválni',
   'dashboard.toast.restored': 'Utazás visszaállítva',
   'dashboard.toast.restoreError': 'Nem sikerült visszaállítani',
-  'dashboard.toast.copied': 'Utazás másolva!',
-  'dashboard.toast.copyError': 'Nem sikerült másolni az utazást',
-  'dashboard.copyTrip': 'Másolás',
   'dashboard.confirm.delete': '"{title}" utazás törlése? Minden hely és terv véglegesen törlődik.',
   'dashboard.editTrip': 'Utazás szerkesztése',
   'dashboard.createTrip': 'Új utazás létrehozása',
@@ -391,6 +388,8 @@ const hu: Record<string, string> = {
   'admin.addons.catalog.atlas.description': 'Világtérkép meglátogatott országokkal és utazási statisztikákkal',
   'admin.addons.catalog.collab.name': 'Együttműködés',
   'admin.addons.catalog.collab.description': 'Valós idejű jegyzetek, szavazások és csevegés az utazás tervezéséhez',
+  'admin.addons.catalog.memories.name': 'Fotók (Immich)',
+  'admin.addons.catalog.memories.description': 'Utazási fotók megosztása az Immich példányon keresztül',
   'admin.addons.subtitleBefore': 'Funkciók engedélyezése vagy letiltása a ',
   'admin.addons.subtitleAfter': ' testreszabásához.',
   'admin.addons.enabled': 'Engedélyezve',
@@ -567,8 +566,8 @@ const hu: Record<string, string> = {
   'atlas.years': 'év',
   'atlas.yearInRow': 'egymást követő év',
   'atlas.yearsInRow': 'egymást követő év',
-  'atlas.tripIn': 'utazás itt:',
-  'atlas.tripsIn': 'utazás itt:',
+  'atlas.tripIn': 'utazás',
+  'atlas.tripsIn': 'utazás',
   'atlas.since': 'óta',
   'atlas.europe': 'Európa',
   'atlas.asia': 'Ázsia',
