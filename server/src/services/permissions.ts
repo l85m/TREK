@@ -19,7 +19,7 @@ export interface PermissionAction {
 export const PERMISSION_ACTIONS: PermissionAction[] = [
   // Trip management
   { key: 'trip_create',        defaultLevel: 'everybody',   allowedLevels: ['admin', 'everybody'] },
-  { key: 'trip_edit',          defaultLevel: 'trip_member',  allowedLevels: ['trip_owner', 'trip_member'] },
+  { key: 'trip_edit',          defaultLevel: 'trip_owner',   allowedLevels: ['trip_owner', 'trip_member'] },
   { key: 'trip_delete',        defaultLevel: 'trip_owner',   allowedLevels: ['admin', 'trip_owner'] },
   { key: 'trip_archive',       defaultLevel: 'trip_owner',   allowedLevels: ['trip_owner', 'trip_member'] },
   { key: 'trip_cover_upload',  defaultLevel: 'trip_owner',   allowedLevels: ['trip_owner', 'trip_member'] },
