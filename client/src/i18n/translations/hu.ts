@@ -601,6 +601,7 @@ const hu: Record<string, string | { name: string; category: string }[]> = {
   'atlas.markVisitedHint': 'Ország hozzáadása a meglátogatottak listájához',
   'atlas.addToBucket': 'Hozzáadás a bakancslistához',
   'atlas.addPoi': 'Hely hozzáadása',
+  'atlas.searchCountry': 'Ország keresése...',
   'atlas.bucketNamePlaceholder': 'Név (ország, város, hely...)',
   'atlas.month': 'Hónap',
   'atlas.addToBucketHint': 'Mentés meglátogatni kívánt helyként',

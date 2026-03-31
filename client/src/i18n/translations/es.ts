@@ -615,6 +615,7 @@ const es: Record<string, string> = {
   'atlas.markVisitedHint': 'Añadir este país a tu lista de visitados',
   'atlas.addToBucket': 'Añadir a lista de deseos',
   'atlas.addPoi': 'Añadir lugar',
+  'atlas.searchCountry': 'Buscar un país...',
   'atlas.bucketNamePlaceholder': 'Nombre (país, ciudad, lugar…)',
   'atlas.month': 'Mes',
   'atlas.year': 'Año',

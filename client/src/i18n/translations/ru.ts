@@ -636,6 +636,7 @@ const ru: Record<string, string> = {
   'atlas.markVisitedHint': 'Добавить эту страну в список посещённых',
   'atlas.addToBucket': 'В список желаний',
   'atlas.addPoi': 'Добавить место',
+  'atlas.searchCountry': 'Поиск страны...',
   'atlas.bucketNamePlaceholder': 'Название (страна, город, место…)',
   'atlas.month': 'Месяц',
   'atlas.year': 'Год',

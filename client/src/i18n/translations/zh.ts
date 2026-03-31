@@ -636,6 +636,7 @@ const zh: Record<string, string> = {
   'atlas.markVisitedHint': '将此国家添加到已访问列表',
   'atlas.addToBucket': '添加到心愿单',
   'atlas.addPoi': '添加地点',
+  'atlas.searchCountry': '搜索国家...',
   'atlas.bucketNamePlaceholder': '名称（国家、城市、地点…）',
   'atlas.month': '月份',
   'atlas.year': '年份',

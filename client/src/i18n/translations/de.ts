@@ -601,6 +601,7 @@ const de: Record<string, string | { name: string; category: string }[]> = {
   'atlas.markVisitedHint': 'Dieses Land zur besuchten Liste hinzufügen',
   'atlas.addToBucket': 'Zur Bucket List',
   'atlas.addPoi': 'Ort hinzufügen',
+  'atlas.searchCountry': 'Land suchen...',
   'atlas.bucketNamePlaceholder': 'Name (Land, Stadt, Ort...)',
   'atlas.month': 'Monat',
   'atlas.year': 'Jahr',

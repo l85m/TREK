@@ -605,6 +605,7 @@ const cs: Record<string, string | { name: string; category: string }[]> = {
   'atlas.markVisitedHint': 'Přidat tuto zemi do seznamu navštívených',
   'atlas.addToBucket': 'Přidat do seznamu přání (Bucket list)',
   'atlas.addPoi': 'Přidat místo',
+  'atlas.searchCountry': 'Hledat zemi...',
   'atlas.bucketNamePlaceholder': 'Název (země, město, místo...)',
   'atlas.month': 'Měsíc',
   'atlas.addToBucketHint': 'Uložit jako místo, které chcete navštívit',

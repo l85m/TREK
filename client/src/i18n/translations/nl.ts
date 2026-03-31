@@ -636,6 +636,7 @@ const nl: Record<string, string> = {
   'atlas.markVisitedHint': 'Dit land toevoegen aan je bezochte lijst',
   'atlas.addToBucket': 'Aan bucket list toevoegen',
   'atlas.addPoi': 'Plaats toevoegen',
+  'atlas.searchCountry': 'Zoek een land...',
   'atlas.bucketNamePlaceholder': 'Naam (land, stad, plek…)',
   'atlas.month': 'Maand',
   'atlas.year': 'Jaar',

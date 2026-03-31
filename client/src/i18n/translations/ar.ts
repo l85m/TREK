@@ -605,6 +605,7 @@ const ar: Record<string, string | { name: string; category: string }[]> = {
   'atlas.markVisitedHint': 'إضافة هذا البلد إلى قائمة المُزارة',
   'atlas.addToBucket': 'إضافة إلى قائمة الأمنيات',
   'atlas.addPoi': 'إضافة مكان',
+  'atlas.searchCountry': 'ابحث عن دولة...',
   'atlas.bucketNamePlaceholder': 'الاسم (بلد، مدينة، مكان…)',
   'atlas.month': 'الشهر',
   'atlas.year': 'السنة',
