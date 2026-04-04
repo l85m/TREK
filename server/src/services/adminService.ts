@@ -463,6 +463,11 @@ export function deleteTemplateItem(itemId: string) {
 
 // ── Addons ─────────────────────────────────────────────────────────────────
 
+export function isAddonEnabled(addonId: string): boolean {
+  const addon = db.prepare('SELECT enabled FROM addons WHERE id = ?').get(addonId) as { enabled: number } | undefined;
+  return !!addon?.enabled;
+}
+
 export function listAddons() {
   const addons = db.prepare('SELECT * FROM addons ORDER BY sort_order, id').all() as Addon[];
   return addons.map(a => ({ ...a, enabled: !!a.enabled, config: JSON.parse(a.config || '{}') }));
