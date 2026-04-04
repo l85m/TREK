@@ -518,6 +518,11 @@ function runMigrations(db: Database.Database): void {
         CREATE INDEX IF NOT EXISTS idx_notifications_recipient_created ON notifications(recipient_id, created_at DESC);
       `);
     },
+    () => {
+      // Track which album link each photo was synced from
+      try { db.exec("ALTER TABLE trip_photos ADD COLUMN album_link_id INTEGER REFERENCES trip_album_links(id) ON DELETE SET NULL DEFAULT NULL"); } catch (err: any) { if (!err.message?.includes('duplicate column name')) throw err; }
+      db.exec('CREATE INDEX IF NOT EXISTS idx_trip_photos_album_link ON trip_photos(album_link_id)');
+    },
   ];
 
   if (currentVersion < migrations.length) {

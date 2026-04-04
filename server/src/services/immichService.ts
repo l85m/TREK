@@ -387,6 +387,8 @@ export function createAlbumLink(
 }
 
 export function deleteAlbumLink(linkId: string, tripId: string, userId: number) {
+  db.prepare('DELETE FROM trip_photos WHERE album_link_id = ? AND trip_id = ? AND user_id = ?')
+    .run(linkId, tripId, userId);
   db.prepare('DELETE FROM trip_album_links WHERE id = ? AND trip_id = ? AND user_id = ?')
     .run(linkId, tripId, userId);
 }
@@ -413,11 +415,11 @@ export async function syncAlbumAssets(
     const assets = (albumData.assets || []).filter((a: any) => a.type === 'IMAGE');
 
     const insert = db.prepare(
-      'INSERT OR IGNORE INTO trip_photos (trip_id, user_id, immich_asset_id, shared) VALUES (?, ?, ?, 1)'
+      'INSERT OR IGNORE INTO trip_photos (trip_id, user_id, immich_asset_id, shared, album_link_id) VALUES (?, ?, ?, 1, ?)'
     );
     let added = 0;
     for (const asset of assets) {
-      const r = insert.run(tripId, userId, asset.id);
+      const r = insert.run(tripId, userId, asset.id, linkId);
       if (r.changes > 0) added++;
     }
 

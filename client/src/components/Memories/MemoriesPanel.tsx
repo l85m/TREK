@@ -107,7 +107,8 @@ export default function MemoriesPanel({ tripId, startDate, endDate }: MemoriesPa
   const unlinkAlbum = async (linkId: number) => {
     try {
       await apiClient.delete(`/integrations/immich/trips/${tripId}/album-links/${linkId}`)
-      loadAlbumLinks()
+      await loadAlbumLinks()
+      await loadPhotos()
     } catch { toast.error(t('memories.error.unlinkAlbum')) }
   }
 
