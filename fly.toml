@@ -1,6 +1,6 @@
 # fly.toml — TREK on Fly.io with scale-to-zero
 
-app = 'app-silent-dew-1907'
+app = 'trek-zvaxiw'
 primary_region = 'iad'
 
 [build]
