@@ -17,32 +17,27 @@ fly apps create <your-app-name>            # e.g. trek-abc123
 
 Then open `fly.toml` and set `app = '<your-app-name>'` at the top. (If you used `fly launch`, it'll already be set.)
 
-## 2. Create the persistent volumes
+## 2. Create the persistent volume
 
-TREK keeps its SQLite database at `/app/data` and user uploads at `/app/uploads`. Both need Fly volumes so data survives machine sleeps and replacements:
+TREK keeps its SQLite database at `/app/data` and user uploads at `/app/uploads`. Fly's shared-cpu machines support exactly one volume mount per machine, so the shipped config collapses both onto a single `trek_data` volume (uploads are symlinked onto `/app/data/uploads` at container startup). Size it to cover DB + uploads together:
 
 ```bash
-fly volumes create trek_data    -a <your-app-name> -r <region> -s 1
-fly volumes create trek_uploads -a <your-app-name> -r <region> -s 3
+fly volumes create trek_data -a <your-app-name> -r <region> -s 4
 ```
 
-Pick the same `<region>` you listed as `primary_region` in `fly.toml` (e.g. `iad`, `ams`, `fra`). Size is in GB — bump `trek_uploads` if you plan to attach a lot of photos/PDFs.
+Pick the same `<region>` you listed as `primary_region` in `fly.toml` (e.g. `iad`, `ams`, `fra`). 4 GB is a reasonable starting size — bump it if you plan to attach a lot of photos/PDFs.
 
-**Double-check that your `fly.toml` mounts them.** The shipped config includes:
+**Double-check that your `fly.toml` mounts it.** The shipped config includes:
 
 ```toml
 [[mounts]]
   source = 'trek_data'
   destination = '/app/data'
-
-[[mounts]]
-  source = 'trek_uploads'
-  destination = '/app/uploads'
 ```
 
-If you ran `fly launch` on an older version of this repo and the `[[mounts]]` sections are missing, add them now — without them every image-level deploy creates fresh machines with ephemeral storage, silently wiping your database.
+If you ran `fly launch` on an older version of this repo and the `[[mounts]]` section is missing, add it now — without it every image-level deploy creates fresh machines with ephemeral storage, silently wiping your database.
 
-**Stay at one machine.** TREK stores everything in SQLite, which can't be shared across hosts — two machines would give you two independent databases that silently diverge. Fly often auto-provisions two machines on `fly launch`; if yours has two (check `fly status`), destroy one and run `fly scale count 1`. Since you only created one volume of each name above, Fly will also refuse to boot a second machine anyway — a helpful accidental safety net.
+**Stay at one machine.** TREK stores everything in SQLite, which can't be shared across hosts — two machines would give you two independent databases that silently diverge. Fly often auto-provisions two machines on `fly launch`; if yours has two (check `fly status`), destroy one and run `fly scale count 1`. Since you only created one `trek_data` volume above, Fly will also refuse to boot a second machine anyway — a helpful accidental safety net.
 
 ## 3. Set secrets **before** the first deploy
 

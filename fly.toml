@@ -25,7 +25,6 @@ primary_region = 'iad'
 [[mounts]]
   source = 'trek_data'
   destination = '/app/data'
-
-[[mounts]]
-  source = 'trek_uploads'
-  destination = '/app/uploads'
+# /app/uploads is collapsed onto /app/data via a symlink at container
+# startup (see Dockerfile CMD) because Fly shared-cpu machines only
+# support a single volume mount. One volume keeps things simple.

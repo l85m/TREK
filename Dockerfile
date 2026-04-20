@@ -34,4 +34,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
 
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["sh", "-c", "chown -R node:node /app/data /app/uploads 2>/dev/null || true; exec su-exec node node --import tsx src/index.ts"]
+# On Fly (shared-cpu machines support only one volume mount), collapse /app/uploads
+# onto the /app/data volume via a symlink so everything persists on a single volume.
+# Local docker-compose deploys keep /app/uploads as a real directory.
+CMD ["sh", "-c", "if [ -n \"$FLY_APP_NAME\" ] && [ ! -L /app/uploads ]; then mkdir -p /app/data/uploads/files /app/data/uploads/covers /app/data/uploads/avatars /app/data/uploads/photos && cp -an /app/uploads/. /app/data/uploads/ 2>/dev/null || true; rm -rf /app/uploads && ln -s /app/data/uploads /app/uploads; fi; chown -R node:node /app/data /app/uploads 2>/dev/null || true; exec su-exec node node --import tsx src/index.ts"]
