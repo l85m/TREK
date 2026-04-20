@@ -23,6 +23,28 @@ import {
   markCountryVisited, unmarkCountryVisited, createBucketItem, deleteBucketItem,
 } from '../services/atlasService';
 import { searchPlaces } from '../services/mapsService';
+import {
+  listItems as listTodoItems,
+  createItem as createTodoItem,
+  updateItem as updateTodoItem,
+  deleteItem as deleteTodoItem,
+} from '../services/todoService';
+import { getWeather, getDetailedWeather } from '../services/weatherService';
+import {
+  getNotifications,
+  getUnreadCount,
+  markRead as markNotificationRead,
+  markAllRead as markAllNotificationsRead,
+  deleteNotification,
+  respondToBoolean as respondToNotification,
+} from '../services/inAppNotifications';
+import {
+  listFiles,
+  getFileById,
+  createFileLink,
+  deleteFileLink,
+  getFileLinks,
+} from '../services/fileService';
 
 const MAX_MCP_TRIP_DAYS = 90;
 
@@ -894,6 +916,327 @@ export function registerTools(server: McpServer, userId: number): void {
       if (!note) return { content: [{ type: 'text' as const, text: 'Note not found.' }], isError: true };
       deleteDayNote(noteId);
       broadcast(tripId, 'dayNote:deleted', { noteId, dayId });
+      return ok({ success: true });
+    }
+  );
+
+  // --- TODOS ---
+
+  server.registerTool(
+    'list_todos',
+    {
+      description: 'List all todo items for a trip, ordered by sort order.',
+      inputSchema: {
+        tripId: z.number().int().positive(),
+      },
+    },
+    async ({ tripId }) => {
+      if (!canAccessTrip(tripId, userId)) return noAccess();
+      const items = listTodoItems(tripId);
+      return ok({ items });
+    }
+  );
+
+  server.registerTool(
+    'create_todo',
+    {
+      description: 'Create a todo item on a trip. Priority is 0 (normal), 1 (high), or 2 (urgent).',
+      inputSchema: {
+        tripId: z.number().int().positive(),
+        name: z.string().min(1).max(200),
+        category: z.string().max(100).optional(),
+        due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Due date (YYYY-MM-DD)'),
+        description: z.string().max(2000).optional(),
+        assigned_user_id: z.number().int().positive().optional().describe('Trip member user_id to assign'),
+        priority: z.number().int().min(0).max(2).optional(),
+      },
+    },
+    async ({ tripId, name, category, due_date, description, assigned_user_id, priority }) => {
+      if (isDemoUser(userId)) return demoDenied();
+      if (!canAccessTrip(tripId, userId)) return noAccess();
+      const item = createTodoItem(tripId, { name, category, due_date, description, assigned_user_id, priority });
+      broadcast(tripId, 'todo:created', { item });
+      return ok({ item });
+    }
+  );
+
+  server.registerTool(
+    'update_todo',
+    {
+      description: 'Update a todo item. Pass only the fields you want to change. Use null on nullable fields (due_date, description, assigned_user_id) to clear them.',
+      inputSchema: {
+        tripId: z.number().int().positive(),
+        todoId: z.number().int().positive(),
+        name: z.string().min(1).max(200).optional(),
+        checked: z.boolean().optional(),
+        category: z.string().max(100).optional(),
+        due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+        description: z.string().max(2000).nullable().optional(),
+        assigned_user_id: z.number().int().positive().nullable().optional(),
+        priority: z.number().int().min(0).max(2).nullable().optional(),
+      },
+    },
+    async (args) => {
+      if (isDemoUser(userId)) return demoDenied();
+      if (!canAccessTrip(args.tripId, userId)) return noAccess();
+      const { tripId, todoId, checked, ...rest } = args;
+      const bodyKeys = Object.keys(args).filter(k => k !== 'tripId' && k !== 'todoId');
+      const data = {
+        ...rest,
+        ...(checked !== undefined ? { checked: checked ? 1 : 0 } : {}),
+      };
+      const item = updateTodoItem(tripId, todoId, data, bodyKeys);
+      if (!item) return { content: [{ type: 'text' as const, text: 'Todo not found.' }], isError: true };
+      broadcast(tripId, 'todo:updated', { item });
+      return ok({ item });
+    }
+  );
+
+  server.registerTool(
+    'toggle_todo',
+    {
+      description: 'Check or uncheck a todo item.',
+      inputSchema: {
+        tripId: z.number().int().positive(),
+        todoId: z.number().int().positive(),
+        checked: z.boolean(),
+      },
+    },
+    async ({ tripId, todoId, checked }) => {
+      if (isDemoUser(userId)) return demoDenied();
+      if (!canAccessTrip(tripId, userId)) return noAccess();
+      const item = updateTodoItem(tripId, todoId, { checked: checked ? 1 : 0 }, ['checked']);
+      if (!item) return { content: [{ type: 'text' as const, text: 'Todo not found.' }], isError: true };
+      broadcast(tripId, 'todo:updated', { item });
+      return ok({ item });
+    }
+  );
+
+  server.registerTool(
+    'delete_todo',
+    {
+      description: 'Delete a todo item.',
+      inputSchema: {
+        tripId: z.number().int().positive(),
+        todoId: z.number().int().positive(),
+      },
+    },
+    async ({ tripId, todoId }) => {
+      if (isDemoUser(userId)) return demoDenied();
+      if (!canAccessTrip(tripId, userId)) return noAccess();
+      const ok_ = deleteTodoItem(tripId, todoId);
+      if (!ok_) return { content: [{ type: 'text' as const, text: 'Todo not found.' }], isError: true };
+      broadcast(tripId, 'todo:deleted', { itemId: todoId });
+      return ok({ success: true });
+    }
+  );
+
+  // --- WEATHER ---
+
+  server.registerTool(
+    'get_weather',
+    {
+      description: 'Get a weather summary (daily high/low, conditions) for coordinates. Omit date for current conditions; pass YYYY-MM-DD for a forecast up to 16 days out or a historical climatology estimate beyond that.',
+      inputSchema: {
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      },
+    },
+    async ({ lat, lng, date }) => {
+      try {
+        const result = await getWeather(String(lat), String(lng), date, 'en');
+        return ok(result);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Weather lookup failed';
+        return { content: [{ type: 'text' as const, text: `Weather error: ${msg}` }], isError: true };
+      }
+    }
+  );
+
+  server.registerTool(
+    'get_detailed_weather',
+    {
+      description: 'Get a detailed hourly weather forecast for coordinates on a given date, including hourly temps, precipitation, wind, humidity, and sunrise/sunset.',
+      inputSchema: {
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      },
+    },
+    async ({ lat, lng, date }) => {
+      try {
+        const result = await getDetailedWeather(String(lat), String(lng), date, 'en');
+        return ok(result);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Weather lookup failed';
+        return { content: [{ type: 'text' as const, text: `Weather error: ${msg}` }], isError: true };
+      }
+    }
+  );
+
+  // --- NOTIFICATIONS (scoped to authenticated user) ---
+
+  server.registerTool(
+    'list_notifications',
+    {
+      description: 'List in-app notifications for the current user. i18n keys (title_key, text_key) and JSON params describe the message.',
+      inputSchema: {
+        limit: z.number().int().min(1).max(50).optional(),
+        offset: z.number().int().min(0).optional(),
+        unreadOnly: z.boolean().optional(),
+      },
+    },
+    async ({ limit, offset, unreadOnly }) => {
+      const result = getNotifications(userId, { limit, offset, unreadOnly });
+      return ok(result);
+    }
+  );
+
+  server.registerTool(
+    'get_unread_notification_count',
+    {
+      description: 'Get the number of unread in-app notifications for the current user.',
+      inputSchema: {},
+    },
+    async () => {
+      return ok({ unread_count: getUnreadCount(userId) });
+    }
+  );
+
+  server.registerTool(
+    'mark_notification_read',
+    {
+      description: 'Mark a single in-app notification as read.',
+      inputSchema: {
+        notificationId: z.number().int().positive(),
+      },
+    },
+    async ({ notificationId }) => {
+      if (isDemoUser(userId)) return demoDenied();
+      const changed = markNotificationRead(notificationId, userId);
+      if (!changed) return { content: [{ type: 'text' as const, text: 'Notification not found.' }], isError: true };
+      return ok({ success: true });
+    }
+  );
+
+  server.registerTool(
+    'mark_all_notifications_read',
+    {
+      description: 'Mark all in-app notifications for the current user as read. Returns the number of notifications affected.',
+      inputSchema: {},
+    },
+    async () => {
+      if (isDemoUser(userId)) return demoDenied();
+      const count = markAllNotificationsRead(userId);
+      return ok({ marked_read: count });
+    }
+  );
+
+  server.registerTool(
+    'delete_notification',
+    {
+      description: 'Delete an in-app notification for the current user.',
+      inputSchema: {
+        notificationId: z.number().int().positive(),
+      },
+    },
+    async ({ notificationId }) => {
+      if (isDemoUser(userId)) return demoDenied();
+      const changed = deleteNotification(notificationId, userId);
+      if (!changed) return { content: [{ type: 'text' as const, text: 'Notification not found.' }], isError: true };
+      return ok({ success: true });
+    }
+  );
+
+  server.registerTool(
+    'respond_to_notification',
+    {
+      description: 'Respond to a boolean-type notification (e.g. accept/decline an invite). Only works for notifications with type=boolean that have not already been responded to.',
+      inputSchema: {
+        notificationId: z.number().int().positive(),
+        response: z.enum(['positive', 'negative']),
+      },
+    },
+    async ({ notificationId, response }) => {
+      if (isDemoUser(userId)) return demoDenied();
+      const result = await respondToNotification(notificationId, userId, response);
+      if (!result.success) {
+        return { content: [{ type: 'text' as const, text: result.error || 'Failed to respond.' }], isError: true };
+      }
+      return ok({ notification: result.notification });
+    }
+  );
+
+  // --- RESERVATION FILE LINKS ---
+  // Note: uploading files over MCP is not supported (multipart). Use the web UI
+  // to upload, then use these tools to list/link/unlink files on reservations.
+
+  server.registerTool(
+    'list_reservation_files',
+    {
+      description: 'List all files linked to a specific reservation, including their download URLs and link IDs (needed for unlinking).',
+      inputSchema: {
+        tripId: z.number().int().positive(),
+        reservationId: z.number().int().positive(),
+      },
+    },
+    async ({ tripId, reservationId }) => {
+      if (!canAccessTrip(tripId, userId)) return noAccess();
+      const reservation = getReservation(reservationId, tripId);
+      if (!reservation) return { content: [{ type: 'text' as const, text: 'Reservation not found.' }], isError: true };
+      const allFiles = listFiles(tripId, false);
+      const files = allFiles
+        .filter((f: any) => (f.linked_reservation_ids || []).includes(reservationId) || f.reservation_id === reservationId)
+        .map((f: any) => {
+          const links = getFileLinks(f.id) as Array<{ id: number; file_id: number; reservation_id: number | null }>;
+          const link = links.find(l => l.reservation_id === reservationId);
+          return { ...f, link_id: link?.id ?? null };
+        });
+      return ok({ files });
+    }
+  );
+
+  server.registerTool(
+    'link_file_to_reservation',
+    {
+      description: 'Link an existing (already-uploaded) file to a reservation. Both the file and the reservation must belong to a trip the user can access.',
+      inputSchema: {
+        tripId: z.number().int().positive(),
+        fileId: z.number().int().positive(),
+        reservationId: z.number().int().positive(),
+      },
+    },
+    async ({ tripId, fileId, reservationId }) => {
+      if (isDemoUser(userId)) return demoDenied();
+      if (!canAccessTrip(tripId, userId)) return noAccess();
+      const file = getFileById(fileId, tripId);
+      if (!file) return { content: [{ type: 'text' as const, text: 'File not found in this trip.' }], isError: true };
+      const reservation = getReservation(reservationId, tripId);
+      if (!reservation) return { content: [{ type: 'text' as const, text: 'Reservation not found.' }], isError: true };
+      const links = createFileLink(fileId, { reservation_id: String(reservationId) });
+      broadcast(tripId, 'file:updated', { fileId });
+      return ok({ links });
+    }
+  );
+
+  server.registerTool(
+    'unlink_file_from_reservation',
+    {
+      description: 'Remove a file-to-reservation link by its link ID (obtainable from list_reservation_files). Does not delete the file itself.',
+      inputSchema: {
+        tripId: z.number().int().positive(),
+        fileId: z.number().int().positive(),
+        linkId: z.number().int().positive(),
+      },
+    },
+    async ({ tripId, fileId, linkId }) => {
+      if (isDemoUser(userId)) return demoDenied();
+      if (!canAccessTrip(tripId, userId)) return noAccess();
+      const file = getFileById(fileId, tripId);
+      if (!file) return { content: [{ type: 'text' as const, text: 'File not found in this trip.' }], isError: true };
+      deleteFileLink(linkId, fileId);
+      broadcast(tripId, 'file:updated', { fileId });
       return ok({ success: true });
     }
   );

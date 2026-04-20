@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "trek": {
+      "type": "http",
+      "url": "https://your-trek-instance.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer trek_your_token_here"
+      }
+    }
+  }
+}

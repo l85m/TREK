@@ -1,0 +1,15 @@
+{
+  "name": "trek-cli",
+  "version": "0.1.0",
+  "description": "Tiny CLI wrapper around the TREK REST API for scripting and shell use.",
+  "type": "module",
+  "bin": {
+    "trek": "./src/trek.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/trek.js"
+  }
+}

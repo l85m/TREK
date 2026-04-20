@@ -33,6 +33,9 @@ Thumbs.db
 .idea/
 .claude/
 
+# Claude Code MCP config (keeps tokens out of the repo)
+.mcp.json
+
 # Logs
 logs
 *.log

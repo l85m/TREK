@@ -345,6 +345,10 @@ cd TREK
 docker build -t trek .
 ```
 
+## AI assistants (Claude & friends)
+
+TREK has a built-in MCP server so Claude Desktop, Claude Code, Claude.ai, Cursor, and other MCP clients can read and write your trips directly. See [`docs/claude-setup.md`](docs/claude-setup.md) for the three setup paths, and [`MCP.md`](MCP.md) for the full tool reference. A small [`trek` CLI](cli/) is also bundled for shell scripting.
+
 ## Data & Backups
 
 - **Database**: SQLite, stored in `./data/travel.db`

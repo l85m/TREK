@@ -35,7 +35,9 @@ Each user can create up to **10 tokens**.
 
 ### 3. Configure your MCP client
 
-The Settings page shows a ready-to-copy client configuration snippet. For **Claude Desktop**, add the following to your
+See [`docs/claude-setup.md`](docs/claude-setup.md) for a one-page walkthrough covering Claude Code, Claude Desktop, and Claude.ai.
+
+The Settings page also shows a ready-to-copy client configuration snippet. For **Claude Desktop**, add the following to your
 `claude_desktop_config.json`:
 
 ```json
@@ -93,6 +95,7 @@ making changes.
 | Accommodations    | `trek://trips/{tripId}/accommodations`     | Hotels/rentals with check-in/out details                  |
 | Members           | `trek://trips/{tripId}/members`            | Owner and collaborators                                   |
 | Collab Notes      | `trek://trips/{tripId}/collab-notes`       | Shared collaborative notes                                |
+| Todos             | `trek://trips/{tripId}/todos`              | Todo checklist for a trip                                 |
 | Categories        | `trek://categories`                        | Available place categories (for use when creating places) |
 | Bucket List       | `trek://bucket-list`                       | Your personal travel bucket list                          |
 | Visited Countries | `trek://visited-countries`                 | Countries marked as visited in Atlas                      |
@@ -101,7 +104,7 @@ making changes.
 
 ## Tools (read-write)
 
-TREK exposes **34 tools** organized by feature area. Use `get_trip_summary` as a starting point — it returns everything
+TREK exposes **50 tools** organized by feature area. Use `get_trip_summary` as a starting point — it returns everything
 about a trip in a single call.
 
 ### Trip Summary
@@ -192,6 +195,46 @@ about a trip in a single call.
 |--------------------------|--------------------------------------------------------------------------------|
 | `mark_country_visited`   | Mark a country as visited using its ISO 3166-1 alpha-2 code (e.g. "FR", "JP"). |
 | `unmark_country_visited` | Remove a country from your visited list.                                       |
+
+### Todos
+
+| Tool           | Description                                                                                                           |
+|----------------|-----------------------------------------------------------------------------------------------------------------------|
+| `list_todos`   | List all todo items for a trip.                                                                                       |
+| `create_todo`  | Add a todo item with optional category, due date, description, assignee, and priority (0=normal, 1=high, 2=urgent).   |
+| `update_todo`  | Update any field. Pass `null` on `due_date`, `description`, or `assigned_user_id` to clear them.                      |
+| `toggle_todo`  | Check or uncheck a todo item.                                                                                         |
+| `delete_todo`  | Remove a todo item.                                                                                                   |
+
+### Weather
+
+| Tool                    | Description                                                                                                                          |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `get_weather`           | Summary weather for lat/lng. Omit `date` for current conditions; 1–16 days out returns a forecast; beyond that returns a climate estimate from last year. |
+| `get_detailed_weather`  | Hourly forecast for a date at lat/lng including hourly temps, precipitation, wind, humidity, and sunrise/sunset.                     |
+
+### Notifications
+
+Notifications are scoped to the authenticated user — no `tripId` is needed. Sending outbound (email / push) is intentionally **not** exposed via MCP.
+
+| Tool                              | Description                                                                                                  |
+|-----------------------------------|--------------------------------------------------------------------------------------------------------------|
+| `list_notifications`              | List in-app notifications for the current user. Supports `limit`, `offset`, `unreadOnly`.                    |
+| `get_unread_notification_count`   | Count of unread in-app notifications for the current user.                                                   |
+| `mark_notification_read`          | Mark one notification as read.                                                                               |
+| `mark_all_notifications_read`     | Mark every unread notification as read. Returns the number affected.                                         |
+| `delete_notification`             | Delete a notification.                                                                                       |
+| `respond_to_notification`         | Respond to a boolean-type notification (e.g. accept/decline an invite) with `positive` or `negative`.        |
+
+### Reservation File Links
+
+File **uploads** still need to happen in the web UI — MCP can't send multipart uploads. But once a file exists, these tools link/list/unlink it on reservations.
+
+| Tool                            | Description                                                                                              |
+|---------------------------------|----------------------------------------------------------------------------------------------------------|
+| `list_reservation_files`        | List files attached to a specific reservation, including download URLs and link IDs for unlinking.       |
+| `link_file_to_reservation`      | Attach an existing uploaded file to a reservation.                                                       |
+| `unlink_file_from_reservation`  | Remove the attachment link (does not delete the file itself).                                            |
 
 ---
 
