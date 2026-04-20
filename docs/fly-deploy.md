@@ -28,6 +28,20 @@ fly volumes create trek_uploads -a <your-app-name> -r <region> -s 3
 
 Pick the same `<region>` you listed as `primary_region` in `fly.toml` (e.g. `iad`, `ams`, `fra`). Size is in GB — bump `trek_uploads` if you plan to attach a lot of photos/PDFs.
 
+**Double-check that your `fly.toml` mounts them.** The shipped config includes:
+
+```toml
+[[mounts]]
+  source = 'trek_data'
+  destination = '/app/data'
+
+[[mounts]]
+  source = 'trek_uploads'
+  destination = '/app/uploads'
+```
+
+If you ran `fly launch` on an older version of this repo and the `[[mounts]]` sections are missing, add them now — without them every image-level deploy creates fresh machines with ephemeral storage, silently wiping your database.
+
 ## 3. Set secrets **before** the first deploy
 
 This order matters. TREK auto-seeds an admin account on first boot. If `ADMIN_EMAIL` / `ADMIN_PASSWORD` are set, the seed uses those. If they aren't, it generates a random password and prints it to stdout — which is fine on a laptop but can roll out of Fly's log buffer on a real deploy, leaving you locked out.
