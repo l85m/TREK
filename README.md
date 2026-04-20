@@ -118,6 +118,8 @@ ENCRYPTION_KEY=$(openssl rand -hex 32) docker run -d -p 3000:3000 \
 
 The app runs on port `3000`. The first user to register becomes the admin.
 
+> Want to run TREK on Fly.io with scale-to-zero? See [`docs/fly-deploy.md`](docs/fly-deploy.md).
+
 ### Install as App (PWA)
 
 TREK works as a Progressive Web App — no App Store needed:
