@@ -80,15 +80,26 @@ The shipped `fly.toml` uses `auto_stop_machines = 'stop'` + `min_machines_runnin
 
 ### Resetting the admin (if seed already ran without secrets)
 
-If step 3 was skipped and the random admin password is lost, reset it from your machine:
+If step 3 was skipped and the random admin password is lost, set the three
+secrets below and restart — no SSH required. On the next boot, the seed
+checks `FORCE_RESEED_ADMIN`; when it's `true` **and** `ADMIN_EMAIL` /
+`ADMIN_PASSWORD` are both set, it deletes existing users and seeds a fresh
+admin with your chosen credentials:
 
 ```bash
-fly secrets set ADMIN_EMAIL="you@example.com" ADMIN_PASSWORD="$(openssl rand -base64 24)" -a <your-app-name>
-fly ssh console -a <your-app-name> -C 'sqlite3 /app/data/trek.sqlite "DELETE FROM users;"'
-fly apps restart <your-app-name>
+fly secrets set \
+  ADMIN_EMAIL="you@example.com" \
+  ADMIN_PASSWORD="$(openssl rand -base64 24)" \
+  FORCE_RESEED_ADMIN=true \
+  -a <your-app-name>
 ```
 
-The seed re-runs on the next boot with the new secrets.
+Fly restarts the machines automatically when secrets change. **After you log
+in, remove the flag** so a future restart doesn't wipe your data:
+
+```bash
+fly secrets unset FORCE_RESEED_ADMIN -a <your-app-name>
+```
 
 ### Backups
 

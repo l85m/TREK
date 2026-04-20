@@ -9,7 +9,22 @@ function isOidcOnlyConfigured(): boolean {
 function seedAdminAccount(db: Database.Database): void {
   try {
     const userCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number }).count;
-    if (userCount > 0) return;
+
+    // One-shot recovery: wipe users and re-seed if explicitly requested AND
+    // admin creds are provided. Gate on all three so an accidental env flip
+    // can't nuke data.
+    const forceReseed = process.env.FORCE_RESEED_ADMIN === 'true'
+      && !!process.env.ADMIN_EMAIL
+      && !!process.env.ADMIN_PASSWORD;
+
+    if (userCount > 0 && !forceReseed) return;
+
+    if (forceReseed && userCount > 0) {
+      console.log('');
+      console.log('[WARN] FORCE_RESEED_ADMIN=true — deleting all existing users');
+      console.log('[WARN] Unset FORCE_RESEED_ADMIN after login to prevent future wipes');
+      db.prepare('DELETE FROM users').run();
+    }
 
     if (isOidcOnlyConfigured()) {
       console.log('');
