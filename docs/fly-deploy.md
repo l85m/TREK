@@ -42,6 +42,8 @@ Pick the same `<region>` you listed as `primary_region` in `fly.toml` (e.g. `iad
 
 If you ran `fly launch` on an older version of this repo and the `[[mounts]]` sections are missing, add them now — without them every image-level deploy creates fresh machines with ephemeral storage, silently wiping your database.
 
+**Stay at one machine.** TREK stores everything in SQLite, which can't be shared across hosts — two machines would give you two independent databases that silently diverge. Fly often auto-provisions two machines on `fly launch`; if yours has two (check `fly status`), destroy one and run `fly scale count 1`. Since you only created one volume of each name above, Fly will also refuse to boot a second machine anyway — a helpful accidental safety net.
+
 ## 3. Set secrets **before** the first deploy
 
 This order matters. TREK auto-seeds an admin account on first boot. If `ADMIN_EMAIL` / `ADMIN_PASSWORD` are set, the seed uses those. If they aren't, it generates a random password and prints it to stdout — which is fine on a laptop but can roll out of Fly's log buffer on a real deploy, leaving you locked out.
