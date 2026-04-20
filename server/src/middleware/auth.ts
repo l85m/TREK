@@ -21,7 +21,12 @@ const authenticate = (req: Request, res: Response, next: NextFunction): void => 
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as { id: number };
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as { id: number; scope?: string };
+    // Scoped JWTs (e.g. OAuth-issued MCP tokens) are NOT valid for general app auth.
+    if (decoded.scope) {
+      res.status(401).json({ error: 'Invalid or expired token', code: 'AUTH_REQUIRED' });
+      return;
+    }
     const user = db.prepare(
       'SELECT id, username, email, role FROM users WHERE id = ?'
     ).get(decoded.id) as User | undefined;
@@ -45,11 +50,15 @@ const optionalAuth = (req: Request, res: Response, next: NextFunction): void => 
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as { id: number };
-    const user = db.prepare(
-      'SELECT id, username, email, role FROM users WHERE id = ?'
-    ).get(decoded.id) as User | undefined;
-    (req as OptionalAuthRequest).user = user || null;
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as { id: number; scope?: string };
+    if (decoded.scope) {
+      (req as OptionalAuthRequest).user = null;
+    } else {
+      const user = db.prepare(
+        'SELECT id, username, email, role FROM users WHERE id = ?'
+      ).get(decoded.id) as User | undefined;
+      (req as OptionalAuthRequest).user = user || null;
+    }
   } catch (err: unknown) {
     (req as OptionalAuthRequest).user = null;
   }

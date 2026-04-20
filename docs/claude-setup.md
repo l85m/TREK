@@ -60,13 +60,19 @@ Restart Claude Desktop. On Windows you may need the full `npx` path (e.g. `C:\PR
 
 ---
 
-## Claude.ai (web, Custom Connectors)
+## Claude.ai (web & iOS/Android apps, Custom Connectors)
+
+claude.ai's custom-connector UI uses **OAuth 2.1** (authorization code + PKCE) — no manual token. TREK ships an embedded authorization server that implements the MCP auth spec, so the flow is end-to-end automatic:
 
 1. Go to claude.ai → **Settings → Connectors → Add custom connector**.
 2. Name: `TREK`.
 3. Remote MCP server URL: `https://trek.example.com/mcp`.
-4. Auth: *Bearer token*, value `trek_your_token_here`.
-5. Save, then enable the connector in a new chat.
+4. Leave the OAuth fields blank — the connector auto-discovers them via `/.well-known/oauth-protected-resource` and registers itself dynamically.
+5. Save, then enable the connector in a new chat. You'll be redirected to your TREK instance to sign in and click **Authorize** once.
+
+Access tokens last 1 hour and are refreshed silently. Revoke access anytime from your TREK admin settings (or by deleting the OAuth client — endpoint coming soon).
+
+Connectors configured on claude.ai sync to the iOS and Android apps automatically.
 
 ---
 

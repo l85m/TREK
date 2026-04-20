@@ -3,7 +3,8 @@ import { randomUUID } from 'crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp';
 import { User } from '../types';
-import { verifyMcpToken, verifyJwtToken } from '../services/authService';
+import { verifyMcpToken } from '../services/authService';
+import { verifyMcpScopedJwt } from '../services/oauthService';
 import { isAddonEnabled } from '../services/adminService';
 import { registerResources } from './resources';
 import { registerTools } from './tools';
@@ -77,8 +78,21 @@ function verifyToken(authHeader: string | undefined): User | null {
     return verifyMcpToken(token);
   }
 
-  // Short-lived JWT
-  return verifyJwtToken(token);
+  // JWT — accepts legacy session tokens (no scope) and OAuth-issued MCP-scoped tokens.
+  return verifyMcpScopedJwt(token);
+}
+
+function sendUnauthorized(req: Request, res: Response, message: string): void {
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined) || req.protocol || 'https';
+  const host = req.headers['host'];
+  const resourceMetadataUrl = host ? `${proto}://${host}/.well-known/oauth-protected-resource` : undefined;
+  if (resourceMetadataUrl) {
+    res.setHeader(
+      'WWW-Authenticate',
+      `Bearer realm="trek-mcp", resource_metadata="${resourceMetadataUrl}"`,
+    );
+  }
+  res.status(401).json({ error: message });
 }
 
 export async function mcpHandler(req: Request, res: Response): Promise<void> {
@@ -89,7 +103,7 @@ export async function mcpHandler(req: Request, res: Response): Promise<void> {
 
   const user = verifyToken(req.headers['authorization']);
   if (!user) {
-    res.status(401).json({ error: 'Access token required' });
+    sendUnauthorized(req, res, 'Access token required');
     return;
   }
 

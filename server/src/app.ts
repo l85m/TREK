@@ -38,6 +38,7 @@ import memoriesRoutes from './routes/memories/unified';
 import notificationRoutes from './routes/notifications';
 import shareRoutes from './routes/share';
 import { mcpHandler } from './mcp';
+import oauthRoutes from './routes/oauth';
 import { Addon } from './types';
 import { getPhotoProviderConfig } from './services/memories/helpersService';
 
@@ -268,6 +269,43 @@ export function createApp(): express.Application {
   app.post('/mcp', mcpHandler);
   app.get('/mcp', mcpHandler);
   app.delete('/mcp', mcpHandler);
+
+  // OAuth 2.1 authorization server (for Claude.ai-style custom connectors)
+  app.use('/oauth', oauthRoutes);
+
+  const baseUrlFromReq = (req: Request): string => {
+    const proto = (req.headers['x-forwarded-proto'] as string | undefined) || req.protocol || 'https';
+    const host = req.headers['host'];
+    return host ? `${proto}://${host}` : '';
+  };
+
+  // Resource server metadata — tells MCP clients where the auth server lives.
+  app.get('/.well-known/oauth-protected-resource', (req: Request, res: Response) => {
+    const base = baseUrlFromReq(req);
+    res.json({
+      resource: `${base}/mcp`,
+      authorization_servers: [base],
+      scopes_supported: ['mcp'],
+      bearer_methods_supported: ['header'],
+    });
+  });
+
+  // Authorization server metadata (RFC 8414).
+  app.get('/.well-known/oauth-authorization-server', (req: Request, res: Response) => {
+    const base = baseUrlFromReq(req);
+    res.json({
+      issuer: base,
+      authorization_endpoint: `${base}/oauth/authorize`,
+      token_endpoint: `${base}/oauth/token`,
+      registration_endpoint: `${base}/oauth/register`,
+      revocation_endpoint: `${base}/oauth/revoke`,
+      response_types_supported: ['code'],
+      grant_types_supported: ['authorization_code', 'refresh_token'],
+      code_challenge_methods_supported: ['S256'],
+      token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
+      scopes_supported: ['mcp'],
+    });
+  });
 
   // Production static file serving
   if (process.env.NODE_ENV === 'production') {

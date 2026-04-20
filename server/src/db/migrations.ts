@@ -864,6 +864,46 @@ function runMigrations(db: Database.Database): void {
         for (const d of matchingDays) ins.run(r.id, d.id, r.day_plan_position);
       }
     },
+    // OAuth 2.1 authorization server tables (for Claude.ai custom connectors, etc.)
+    () => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS oauth_clients (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          client_id TEXT NOT NULL UNIQUE,
+          client_secret_hash TEXT,
+          client_name TEXT NOT NULL,
+          redirect_uris TEXT NOT NULL,
+          token_endpoint_auth_method TEXT NOT NULL DEFAULT 'none',
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_oauth_clients_client_id ON oauth_clients(client_id);
+
+        CREATE TABLE IF NOT EXISTS oauth_auth_codes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          code_hash TEXT NOT NULL UNIQUE,
+          client_id TEXT NOT NULL,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          redirect_uri TEXT NOT NULL,
+          code_challenge TEXT NOT NULL,
+          code_challenge_method TEXT NOT NULL,
+          scope TEXT NOT NULL,
+          expires_at DATETIME NOT NULL,
+          used INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS oauth_refresh_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          token_hash TEXT NOT NULL UNIQUE,
+          client_id TEXT NOT NULL,
+          user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          scope TEXT NOT NULL,
+          expires_at DATETIME NOT NULL,
+          revoked INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+    },
   ];
 
   if (currentVersion < migrations.length) {
