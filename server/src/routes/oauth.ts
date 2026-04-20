@@ -24,6 +24,18 @@ import { User } from '../types';
 
 const router = express.Router();
 
+// Override helmet's app-wide CSP for OAuth routes so the 302 redirect back to
+// the client's redirect_uri (e.g. https://claude.ai/api/mcp/auth_callback)
+// isn't blocked by form-action 'self'. Browsers enforce form-action against
+// the originating page's CSP on both the initial submit AND on redirects.
+router.use((req: Request, res: Response, next) => {
+  const fromQuery = typeof req.query.redirect_uri === 'string' ? req.query.redirect_uri : undefined;
+  const body = req.body as Record<string, unknown> | undefined;
+  const fromBody = body && typeof body.redirect_uri === 'string' ? (body.redirect_uri as string) : undefined;
+  setOAuthCsp(res, fromQuery ?? fromBody);
+  next();
+});
+
 // ---------------------------------------------------------------------------
 // Dynamic Client Registration (RFC 7591)
 // ---------------------------------------------------------------------------
@@ -77,6 +89,31 @@ function parseAuthorizeParams(source: Record<string, unknown>): Partial<Authoriz
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+/**
+ * Override helmet's default CSP for OAuth pages so the form's 302 redirect to
+ * the client's redirect_uri isn't blocked by form-action 'self'. Without this,
+ * Chrome silently drops the redirect to e.g. https://claude.ai/api/mcp/auth_callback.
+ */
+function setOAuthCsp(res: Response, redirectUri?: string): void {
+  const allowed = ["'self'"];
+  if (redirectUri) {
+    try { allowed.push(new URL(redirectUri).origin); } catch { /* ignore bad URI */ }
+  }
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'none'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      `form-action ${allowed.join(' ')}`,
+      "frame-ancestors 'none'",
+    ].join('; '),
+  );
 }
 
 function renderPage(title: string, body: string, errorMsg?: string): string {
